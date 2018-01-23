@@ -25,7 +25,7 @@ def create_bias_variable(name, shape):
     '''Create a bias variable with the specified name and shape and initialize
     it to zero.'''
     initializer = tf.constant_initializer(value=0.0, dtype=tf.float32)
-    return tf.Variable(initializer(shape=shape), name)
+    return tf.Variable(initializer(shape=shape), name=name)
 
 
 class WaveNetModel(object):
@@ -131,7 +131,7 @@ class WaveNetModel(object):
 
         var = dict()
 
-        with tf.variable_scope('wavenet'):
+        with tf.variable_scope('wavenet_Variable'):
             if self.global_condition_cardinality is not None:
                 # We only look up the embedding if we are conditioning on a
                 # set of mutually-exclusive categories. We can also condition
@@ -275,8 +275,8 @@ class WaveNetModel(object):
         weights_filter = variables['filter']
         weights_gate = variables['gate']
 
-        conv_filter = causal_conv(input_batch, weights_filter, dilation)
-        conv_gate = causal_conv(input_batch, weights_gate, dilation)
+        conv_filter = causal_conv(input_batch, weights_filter, dilation, name='causal_conv_filter')
+        conv_gate = causal_conv(input_batch, weights_gate, dilation,name='causal_conv_gate')
 
         if global_condition_batch is not None:
             weights_gc_filter = variables['gc_filtweights']
@@ -331,7 +331,7 @@ class WaveNetModel(object):
                 tf.histogram_summary(layer + '_biases_skip', skip_bias)
 
         input_cut = tf.shape(input_batch)[1] - tf.shape(transformed)[1]
-        input_batch = tf.slice(input_batch, [0, input_cut, 0], [-1, -1, -1])
+        input_batch = tf.slice(input_batch, [0, input_cut, 0], [-1, -1, -1],'slice_layer_output')
 
         return skip_contribution, input_batch + transformed
 
@@ -623,7 +623,7 @@ class WaveNetModel(object):
              input_batch,
              global_condition_batch=None,
              l2_regularization_strength=None,
-             name='wavenet'):
+             name='wavenet_Loss'):
         '''Creates a WaveNet network and returns the autoencoding loss.
 
         The variables are all scoped to the given name.

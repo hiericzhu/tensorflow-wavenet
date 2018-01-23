@@ -105,10 +105,10 @@ class AudioReader(object):
         self.silence_threshold = silence_threshold
         self.gc_enabled = gc_enabled
         self.threads = []
-        self.sample_placeholder = tf.placeholder(dtype=tf.float32, shape=None)
+        self.sample_placeholder = tf.placeholder(dtype=tf.float32, shape=None, name='sample_placeholder_AudioReader')
         self.queue = tf.PaddingFIFOQueue(queue_size,
                                          ['float32'],
-                                         shapes=[(None, 1)])
+                                         shapes=[(None, 1)], name='FIFI_AudioReader')
         self.enqueue = self.queue.enqueue([self.sample_placeholder])
 
         if self.gc_enabled:
