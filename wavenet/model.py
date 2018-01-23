@@ -131,7 +131,7 @@ class WaveNetModel(object):
 
         var = dict()
 
-        with tf.variable_scope('wavenet_Variable'):
+        with tf.variable_scope('WaveNetModel_create_variables'):
             if self.global_condition_cardinality is not None:
                 # We only look up the embedding if we are conditioning on a
                 # set of mutually-exclusive categories. We can also condition
@@ -623,7 +623,7 @@ class WaveNetModel(object):
              input_batch,
              global_condition_batch=None,
              l2_regularization_strength=None,
-             name='wavenet_Loss'):
+             name='WaveNetModel_loss'):
         '''Creates a WaveNet network and returns the autoencoding loss.
 
         The variables are all scoped to the given name.
@@ -647,7 +647,8 @@ class WaveNetModel(object):
             network_input = tf.slice(network_input, [0, 0, 0],
                                      [-1, network_input_width, -1])
 
-            raw_output = self._create_network(network_input, gc_embedding)
+            with tf.name_scope('_create_network'):
+                raw_output = self._create_network(network_input, gc_embedding)
 
             with tf.name_scope('loss'):
                 # Cut off the samples corresponding to the receptive field

@@ -253,11 +253,13 @@ def main():
     loss = net.loss(input_batch=audio_batch,
                     global_condition_batch=gc_id_batch,
                     l2_regularization_strength=args.l2_regularization_strength)
-    optimizer = optimizer_factory[args.optimizer](
+    with tf.name_scope('create_optimizer'):
+        with tf.name_scope('create_AdamOptimizer'):
+            optimizer = optimizer_factory[args.optimizer](
                     learning_rate=args.learning_rate,
                     momentum=args.momentum)
-    trainable = tf.trainable_variables()
-    optim = optimizer.minimize(loss, var_list=trainable)
+        trainable = tf.trainable_variables()
+        optim = optimizer.minimize(loss, var_list=trainable, name='minimize')
 
     # Set up logging for TensorBoard.
     writer = tf.summary.FileWriter(logdir)
