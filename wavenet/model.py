@@ -153,13 +153,13 @@ class WaveNetModel(object):
                     initial_channels = 1
                     initial_filter_width = self.initial_filter_width
                 else:
-                    initial_channels = self.quantization_channels
-                    initial_filter_width = self.filter_width
+                    initial_channels = self.quantization_channels #256
+                    initial_filter_width = self.filter_width  #2
                 layer['filter'] = create_variable(
                     'filter',
                     [initial_filter_width,
                      initial_channels,
-                     self.residual_channels])
+                     self.residual_channels]) #32
                 var['causal_layer'] = layer
 
             var['dilated_stack'] = list()
@@ -169,9 +169,9 @@ class WaveNetModel(object):
                         current = dict()
                         current['filter'] = create_variable(
                             'filter',
-                            [self.filter_width,
-                             self.residual_channels,
-                             self.dilation_channels])
+                            [self.filter_width,              #2
+                             self.residual_channels,    #32
+                             self.dilation_channels])   #32
                         current['gate'] = create_variable(
                             'gate',
                             [self.filter_width,
@@ -185,8 +185,8 @@ class WaveNetModel(object):
                         current['skip'] = create_variable(
                             'skip',
                             [1,
-                             self.dilation_channels,
-                             self.skip_channels])
+                             self.dilation_channels,  #32 
+                             self.skip_channels])      #512
 
                         if self.global_condition_channels is not None:
                             current['gc_gateweights'] = create_variable(
@@ -239,7 +239,7 @@ class WaveNetModel(object):
         The layer can change the number of channels.
         '''
         with tf.name_scope('causal_layer'):
-            weights_filter = self.variables['causal_layer']['filter']
+            weights_filter = self.variables['causal_layer']['filter']  #2x256x32
             return causal_conv(input_batch, weights_filter, 1)
 
     def _create_dilation_layer(self, input_batch, layer_index, dilation,
@@ -275,8 +275,8 @@ class WaveNetModel(object):
         weights_filter = variables['filter']
         weights_gate = variables['gate']
 
-        conv_filter = causal_conv(input_batch, weights_filter, dilation, name='causal_conv_filter')
-        conv_gate = causal_conv(input_batch, weights_gate, dilation,name='causal_conv_gate')
+        conv_filter = causal_conv(input_batch, weights_filter, dilation, name='filter') #3 tensor input to 'filter' block
+        conv_gate = causal_conv(input_batch, weights_gate, dilation,name='gate')  #3 tensor input to 'gate'  block
 
         if global_condition_batch is not None:
             weights_gc_filter = variables['gc_filtweights']
@@ -303,7 +303,7 @@ class WaveNetModel(object):
         # The 1x1 conv to produce the residual output
         weights_dense = variables['dense']
         transformed = tf.nn.conv1d(
-            out, weights_dense, stride=1, padding="SAME", name="dense_by_conv1d")
+            out, weights_dense, stride=1, padding="SAME", name="dense")
 
         # The 1x1 conv to produce the skip output
         skip_cut = tf.shape(out)[1] - output_width
