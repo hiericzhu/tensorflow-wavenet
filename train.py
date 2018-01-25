@@ -227,9 +227,9 @@ def main():
                                                                    wavenet_params["dilations"],
                                                                    wavenet_params["scalar_input"],
                                                                    wavenet_params["initial_filter_width"]),
-            sample_size=args.sample_size,
+            sample_size=args.sample_size,  #SAMPLE_SIZE = 100000
             silence_threshold=silence_threshold)
-        audio_batch = reader.dequeue(args.batch_size)
+        audio_batch = reader.dequeue(args.batch_size)  #BATCH_SIZE = 1, in each training step,  dequeue 1 audio piece
         if gc_enabled:
             gc_id_batch = reader.dequeue_gc(args.batch_size)
         else:
@@ -292,7 +292,7 @@ def main():
         raise
 
     threads = tf.train.start_queue_runners(sess=sess, coord=coord)
-    reader.start_threads(sess)
+    reader.start_threads(sess)   #start to read audio data from file, and enqueue audio pieces
 
     step = None
     last_saved_step = saved_global_step

@@ -56,7 +56,7 @@ def load_generic_audio(directory, sample_rate):
         else:
             # The file name matches the pattern for containing ids.
             category_id = int(ids[0][0])
-        audio, _ = librosa.load(filename, sr=sample_rate, mono=True)
+        audio, _ = librosa.load(filename, sr=sample_rate, mono=True)  #duration is None, means whole file
         audio = audio.reshape(-1, 1)
         yield audio, filename, category_id
 
@@ -145,6 +145,7 @@ class AudioReader(object):
 
     def dequeue(self, num_elements):
         output = self.queue.dequeue_many(num_elements)
+        print("INFO: in AudioReader.dequeue(), output is: {}".format(tf.shape(output)))
         return output
 
     def dequeue_gc(self, num_elements):
@@ -156,6 +157,7 @@ class AudioReader(object):
         while not stop:
             iterator = load_generic_audio(self.audio_dir, self.sample_rate)
             for audio, filename, category_id in iterator:
+                print("INFO: load {}  from {}, shape:{} category_id:{}".format(len(audio), filename, audio.shape, category_id))
                 if self.coord.should_stop():
                     stop = True
                     break
@@ -168,18 +170,20 @@ class AudioReader(object):
                               "silence. Consider decreasing trim_silence "
                               "threshold, or adjust volume of the audio."
                               .format(filename))
+                        continue #add by eric
 
-                audio = np.pad(audio, [[self.receptive_field, 0], [0, 0]],
+                audio = np.pad(audio, [[self.receptive_field, 0], [0, 0]],    #fill receptive_field lines 0 at begin
                                'constant')
 
-                if self.sample_size:
+                if self.sample_size:    #SAMPLE_SIZE = 100000 in train.py
                     # Cut samples into pieces of size receptive_field +
                     # sample_size with receptive_field overlap
                     while len(audio) > self.receptive_field:
                         piece = audio[:(self.receptive_field +
                                         self.sample_size), :]
+                        print("INFO: enqueue: piece shape:{}, len:[{},{}], receptive_field={}".format(np.shape(piece),len(piece[0]),len(piece[1]),self.receptive_field ))
                         sess.run(self.enqueue,
-                                 feed_dict={self.sample_placeholder: piece})
+                                 feed_dict={self.sample_placeholder: piece})  #enqueue a audio piece
                         audio = audio[self.sample_size:, :]
                         if self.gc_enabled:
                             sess.run(self.gc_enqueue, feed_dict={

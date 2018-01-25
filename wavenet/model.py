@@ -628,6 +628,7 @@ class WaveNetModel(object):
 
         The variables are all scoped to the given name.
         '''
+        print("INFO: in loss(), input_batch is: {}".format(tf.shape(input_batch)))
         with tf.name_scope(name):
             # We mu-law encode and quantize the input audioform.
             encoded_input = mu_law_encode(input_batch,
