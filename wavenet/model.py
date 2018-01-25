@@ -272,8 +272,8 @@ class WaveNetModel(object):
         '''
         variables = self.variables['dilated_stack'][layer_index]
 
-        weights_filter = variables['filter']
-        weights_gate = variables['gate']
+        weights_filter = variables['filter']  #2x32x32
+        weights_gate = variables['gate'] #2x32x32
 
         conv_filter = causal_conv(input_batch, weights_filter, dilation, name='filter') #3 tensor input to 'filter' block
         conv_gate = causal_conv(input_batch, weights_gate, dilation,name='gate')  #3 tensor input to 'gate'  block
@@ -293,8 +293,8 @@ class WaveNetModel(object):
                                                  name="gc_gate")
 
         if self.use_biases:
-            filter_bias = variables['filter_bias']
-            gate_bias = variables['gate_bias']
+            filter_bias = variables['filter_bias'] #32
+            gate_bias = variables['gate_bias']  #32
             conv_filter = tf.add(conv_filter, filter_bias)
             conv_gate = tf.add(conv_gate, gate_bias)
 
@@ -333,7 +333,7 @@ class WaveNetModel(object):
         input_cut = tf.shape(input_batch)[1] - tf.shape(transformed)[1]
         input_batch = tf.slice(input_batch, [0, input_cut, 0], [-1, -1, -1],'slice_layer_output')
 
-        return skip_contribution, input_batch + transformed
+        return skip_contribution, input_batch + transformed #input_batch + transformed is residual network!
 
     def _generator_conv(self, input_batch, state_batch, weights):
         '''Perform convolution for a single convolutional processing step.'''
