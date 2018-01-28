@@ -170,7 +170,7 @@ class AudioReader(object):
                               "silence. Consider decreasing trim_silence "
                               "threshold, or adjust volume of the audio."
                               .format(filename))
-                        continue #add by eric
+                        #continue #add by eric
 
                 audio = np.pad(audio, [[self.receptive_field, 0], [0, 0]],    #fill receptive_field lines 0 at begin
                                'constant')
@@ -196,9 +196,10 @@ class AudioReader(object):
                                  feed_dict={self.id_placeholder: category_id})
 
     def start_threads(self, sess, n_threads=1):
-        for _ in range(n_threads):
-            thread = threading.Thread(target=self.thread_main, args=(sess,))
-            thread.daemon = True  # Thread will close when parent quits.
-            thread.start()
-            self.threads.append(thread)
-        return self.threads
+        with tf.device('/cpu:0'):
+            for _ in range(n_threads):
+                thread = threading.Thread(target=self.thread_main, args=(sess,))
+                thread.daemon = True  # Thread will close when parent quits.
+                thread.start()
+                self.threads.append(thread)
+            return self.threads

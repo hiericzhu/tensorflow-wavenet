@@ -20,7 +20,7 @@ from tensorflow.python.client import timeline
 from wavenet import WaveNetModel, AudioReader, optimizer_factory
 
 #force use CPU only
-os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
+#os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
 
 BATCH_SIZE = 1
 DATA_DIRECTORY = './VCTK-Corpus'
@@ -30,7 +30,8 @@ NUM_STEPS = int(1e5)
 LEARNING_RATE = 1e-3
 WAVENET_PARAMS = './wavenet_params.json'
 STARTED_DATESTRING = "{0:%Y-%m-%dT%H-%M-%S}".format(datetime.now())
-SAMPLE_SIZE = 100000
+#SAMPLE_SIZE = 100000 #GPU memory 4G is not enough!
+SAMPLE_SIZE = 80000 #85000 NOK 
 L2_REGULARIZATION_STRENGTH = 0
 SILENCE_THRESHOLD = 0.3
 EPSILON = 0.001
@@ -212,28 +213,29 @@ def main():
     coord = tf.train.Coordinator()
 
     # Load raw waveform from VCTK corpus.
-    with tf.name_scope('create_inputs'):
-        # Allow silence trimming to be skipped by specifying a threshold near
-        # zero.
-        silence_threshold = args.silence_threshold if args.silence_threshold > \
-                                                      EPSILON else None
-        gc_enabled = args.gc_channels is not None
-        reader = AudioReader(
-            args.data_dir,
-            coord,
-            sample_rate=wavenet_params['sample_rate'],
-            gc_enabled=gc_enabled,
-            receptive_field=WaveNetModel.calculate_receptive_field(wavenet_params["filter_width"],
-                                                                   wavenet_params["dilations"],
-                                                                   wavenet_params["scalar_input"],
-                                                                   wavenet_params["initial_filter_width"]),
-            sample_size=args.sample_size,  #SAMPLE_SIZE = 100000
-            silence_threshold=silence_threshold)
-        audio_batch = reader.dequeue(args.batch_size)  #BATCH_SIZE = 1, in each training step,  dequeue 1 audio piece
-        if gc_enabled:
-            gc_id_batch = reader.dequeue_gc(args.batch_size)
-        else:
-            gc_id_batch = None
+    with tf.device('/cpu:0'):
+        with tf.name_scope('create_inputs'):
+            # Allow silence trimming to be skipped by specifying a threshold near
+            # zero.
+            silence_threshold = args.silence_threshold if args.silence_threshold > \
+                                                          EPSILON else None
+            gc_enabled = args.gc_channels is not None
+            reader = AudioReader(
+                args.data_dir,
+                coord,
+                sample_rate=wavenet_params['sample_rate'],
+                gc_enabled=gc_enabled,
+                receptive_field=WaveNetModel.calculate_receptive_field(wavenet_params["filter_width"],
+                                                                       wavenet_params["dilations"],
+                                                                       wavenet_params["scalar_input"],
+                                                                       wavenet_params["initial_filter_width"]),
+                sample_size=args.sample_size,  #SAMPLE_SIZE = 100000
+                silence_threshold=silence_threshold)
+            audio_batch = reader.dequeue(args.batch_size)  #BATCH_SIZE = 1, in each training step,  dequeue 1 audio piece
+            if gc_enabled:
+                gc_id_batch = reader.dequeue_gc(args.batch_size)
+            else:
+                gc_id_batch = None
 
     # Create network.
     net = WaveNetModel(
@@ -256,9 +258,9 @@ def main():
     loss = net.loss(input_batch=audio_batch,
                     global_condition_batch=gc_id_batch,
                     l2_regularization_strength=args.l2_regularization_strength)
+
     with tf.name_scope('create_optimizer'):
-        with tf.name_scope('create_AdamOptimizer'):
-            optimizer = optimizer_factory[args.optimizer](
+        optimizer = optimizer_factory[args.optimizer](
                     learning_rate=args.learning_rate,
                     momentum=args.momentum)
         trainable = tf.trainable_variables()
@@ -270,8 +272,12 @@ def main():
     run_metadata = tf.RunMetadata()
     summaries = tf.summary.merge_all()
 
+    # 配置每个 GPU 上占用的内存的比例
+    gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.90)
     # Set up session
-    sess = tf.Session(config=tf.ConfigProto(log_device_placement=False))
+    #sess = tf.Session(config=tf.ConfigProto(log_device_placement=False))
+    sess = tf.Session(config=tf.ConfigProto(log_device_placement=False,gpu_options=gpu_options))
+
     init = tf.global_variables_initializer()
     sess.run(init)
 
